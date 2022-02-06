@@ -1,0 +1,245 @@
+<html lang="en">
+
+<head>
+    <title>Space Invaders</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div id="background">
+        <div id="hero"></div>
+        <div id="missiles"></div>
+        <div id="enemies"></div>
+        <div id="missilesEnemy"></div>
+        <div id="marcador">Score: 0</div>
+
+    </div>
+
+    <div class="win">
+        <h1>CONGRATULATIONS!</h1>
+        <h2>You won the game!</h2>
+        <button class="btn" onclick="window.location.reload()">Restart</button>
+    </div>
+    <div class="lose">
+        <h1>GAME OVER!</h1>
+        <h2>Try Again!</h2>
+        <button class="btn" onclick="window.location.reload()">Restart</button>
+    </div>
+
+    <script>
+        var gameover = false;
+        var winn = false;
+        var SPACE_WIDTH = 1215;
+        var SPACE_HEIGHT = 535;
+        var score = 0;
+        var hero = {
+            left: 620,
+            top: 475,
+            cooldown: 0
+        };
+
+        var missiles = [];
+        var missilesEnemy = [];
+
+        var enemies = [
+            { left: 200, top: 100, cooldown_enemy: 0 },
+            { left: 400, top: 100, cooldown_enemy: 100 },
+            { left: 600, top: 100, cooldown_enemy: 20 },
+            { left: 800, top: 100, cooldown_enemy: 25 },
+            { left: 1000, top: 100, cooldown_enemy: 10 },
+
+            { left: 200, top: 175, cooldown_enemy: 85 },
+            { left: 400, top: 175, cooldown_enemy: 70 },
+            { left: 600, top: 175, cooldown_enemy: 0 },
+            { left: 800, top: 175, cooldown_enemy: 200 },
+            { left: 1000, top: 175, cooldown_enemy: 90 },
+
+        ];
+
+        const audioPlayerDidFire = new Audio("sound/PlayerDidFire.wav");
+        const audioEnemyWasHit = new Audio("sound/EnemyWasHit.wav");
+        const audioPlayerWasHit = new Audio("sound/PlayerWasHit.wav");
+        const audioWinner = new Audio("sound/Winner.mp3");
+
+        //HERO
+        document.onkeydown = function (e) {
+            //Izquierda
+            if (e.keyCode === 37) {
+                hero.left = hero.left - 10;
+                if (hero.left < 0) {
+                    hero.left = 0;
+                }
+            }
+            //Derecha
+            if (e.keyCode === 39) {
+                hero.left = hero.left + 10;
+                if (hero.left > SPACE_WIDTH) {
+                    hero.left = SPACE_WIDTH;
+                }
+            }
+            //Espacio (disparar)
+            if (e.keyCode === 32) {
+                if (hero.cooldown <= 0) {
+                    missiles.push({
+                        left: hero.left + 20,
+                        top: hero.top - 20
+                    });
+                    drawMissiles()
+                    hero.cooldown = 10;
+                    audioPlayerDidFire.play();
+                }
+            }
+            drawHero();
+        }
+
+        function drawHero() {
+            document.getElementById('hero').style.left = hero.left + 'px';
+            document.getElementById('hero').style.top = hero.top + 'px';
+        }
+
+        function drawMissiles() {
+            document.getElementById('missiles').innerHTML = ""
+            for (var i = 0; i < missiles.length; i++) {
+                if (missiles[i].top >= 0) {
+                    document.getElementById('missiles').innerHTML += `<div class='missile' style='left:${(missiles[i].left) - 20}px; top:${(missiles[i].top)}px'></div>`;
+                }
+            }
+        }
+
+        function moveMissiles() {
+            for (var i = 0; i < missiles.length; i++) {
+                missiles[i].top = missiles[i].top - 8
+            }
+        }
+
+        function collisionHero() {
+            for (var missile = 0; missile < missilesEnemy.length; missile++) {
+                if (
+                    missilesEnemy[missile].left >= hero.left &&
+                    missilesEnemy[missile].left <= (hero.left + 40) &&
+                    missilesEnemy[missile].top <= (hero.top + 65) &&
+                    missilesEnemy[missile].top >= hero.top
+                ) {
+                    audioPlayerWasHit.play();
+                    missilesEnemy.splice(missile, 1);
+                    document.querySelector(".lose").style.display = "block";
+                    gameover = true;
+
+                }
+
+            }
+        }
+
+        //ENEMIES
+        function drawMissilesEnemy() {
+            document.getElementById('missilesEnemy').innerHTML = ""
+            for (var i = 0; i < missilesEnemy.length; i++) {
+                if (missilesEnemy[i].top <= SPACE_HEIGHT) {
+                    document.getElementById('missilesEnemy').innerHTML += `<div class='missileEnemy' style='left:${(missilesEnemy[i].left)}px; top:${(missilesEnemy[i].top)}px'></div>`;
+                }
+            }
+        }
+
+        function moveMissilesEnemy() {
+            for (var i = 0; i < missilesEnemy.length; i++) {
+                missilesEnemy[i].top = missilesEnemy[i].top + 12
+            }
+        }
+
+        function shotEnemy(a, b) {
+            missilesEnemy.push({ left: a, top: b + 40 });
+        }
+
+        function drawEnemies() {
+            document.getElementById('enemies').innerHTML = ""
+            for (var i = 0; i < enemies.length; i++) {
+                document.getElementById('enemies').innerHTML += `<div class='enemy' style='left:${enemies[i].left}px; top:${enemies[i].top}px'></div>`;
+            }
+        }
+
+        function moveEnemies() {
+            //Mover en una elipse
+            const dx = Math.sin(Date.now() / 1000) * 4;
+            const dy = Math.cos(Date.now() / 1000) * 3;
+
+            for (let i = 0; i < enemies.length; i++) {
+                const enemy = enemies[i];
+                var a = enemy.left + dx;
+                var b = enemy.top + dy;
+                enemies[i].left = a;
+                enemies[i].top = b;
+                if (enemies[i].cooldown_enemy <= 0) {
+                    shotEnemy(a, b);
+                    //resetear el cooldown
+                    enemies[i].cooldown_enemy = Math.floor(Math.random() * 50) + 100;
+                }
+                enemies[i].cooldown_enemy -= 2;
+            }
+        }
+
+        function collisionDetection() {
+            for (var enemy = 0; enemy < enemies.length; enemy++) {
+                for (var missile = 0; missile < missiles.length; missile++) {
+                    if (
+                        missiles[missile].left >= enemies[enemy].left &&
+                        missiles[missile].left <= (enemies[enemy].left + 40) &&
+                        missiles[missile].top <= (enemies[enemy].top + 65) &&
+                        missiles[missile].top >= enemies[enemy].top
+                    ) {
+                        enemies.splice(enemy, 1);
+                        missiles.splice(missile, 1);
+                        audioEnemyWasHit.play();
+                        score = score + 50;
+                    }
+                }
+            }
+        }
+
+        //MARCADOR
+        function drawScore() {
+            let marcador = document.getElementById("marcador");
+            marcador.innerHTML = "Score: " + score;
+        }
+
+        //PANTALLA DE WINNER
+        function winner() {
+            if (enemies.length == 0) {
+                audioWinner.play();
+                document.querySelector(".win").style.display = "block";
+                winn = true;
+            }
+        }
+
+        function gameLoop() {
+            if (gameover == false && winn == false) {
+                setTimeout(gameLoop, 100)
+                moveMissiles();
+                drawMissiles();
+                drawMissilesEnemy();
+                moveMissilesEnemy();
+                moveEnemies();
+                drawEnemies();
+                shotEnemy();
+                collisionDetection();
+                collisionHero();
+                drawScore();
+                winner();
+                if (hero.cooldown > 0) {
+                    hero.cooldown -= 2;
+                }
+            } else {
+                //Parar el juego
+                enemies.slice(0, enemies.length);
+                missilesEnemy.slice(0, missiles.length);
+                missiles.slice(0, missiles.length);
+            }
+
+        }
+
+        gameLoop()
+
+    </script>
+</body>
+
+</html>
